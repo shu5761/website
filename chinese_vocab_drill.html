@@ -1,0 +1,795 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>中国語 単語ドリル</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Kaisei+Decol:wght@400;700&family=Noto+Sans+JP:wght@400;500;700&family=Noto+Sans+SC:wght@400;700&display=swap');
+
+:root {
+  --bg: #0f0e17;
+  --surface: #1a1828;
+  --card: #22203a;
+  --border: #2e2b4a;
+  --accent: #e8534a;
+  --accent2: #f5a623;
+  --teal: #4ecdc4;
+  --text: #eeeaf4;
+  --muted: #8885a0;
+  --correct: #4ecdc4;
+  --wrong: #e8534a;
+  --kanji-font: 'Kaisei Decol', serif;
+  --ui-font: 'Noto Sans JP', sans-serif;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: var(--ui-font);
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 20px 16px 40px;
+}
+
+/* bg decoration */
+body::before {
+  content: '';
+  position: fixed;
+  top: -200px; right: -200px;
+  width: 600px; height: 600px;
+  background: radial-gradient(circle, rgba(232,83,74,0.12) 0%, transparent 70%);
+  pointer-events: none;
+}
+body::after {
+  content: '';
+  position: fixed;
+  bottom: -150px; left: -150px;
+  width: 500px; height: 500px;
+  background: radial-gradient(circle, rgba(78,205,196,0.1) 0%, transparent 70%);
+  pointer-events: none;
+}
+
+.app {
+  width: 100%;
+  max-width: 580px;
+  position: relative;
+  z-index: 1;
+}
+
+/* Header */
+header {
+  text-align: center;
+  margin-bottom: 28px;
+}
+.logo {
+  font-family: var(--kanji-font);
+  font-size: 2rem;
+  color: var(--accent);
+  letter-spacing: 0.12em;
+  line-height: 1;
+}
+.logo span { color: var(--teal); }
+header p {
+  color: var(--muted);
+  font-size: 0.82rem;
+  margin-top: 6px;
+  letter-spacing: 0.08em;
+}
+
+/* Mode tabs */
+.mode-tabs {
+  display: flex;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 4px;
+  margin-bottom: 20px;
+  gap: 4px;
+}
+.mode-tab {
+  flex: 1;
+  padding: 10px 6px;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--muted);
+  font-family: var(--ui-font);
+  font-size: 0.82rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+  letter-spacing: 0.04em;
+}
+.mode-tab.active {
+  background: var(--accent);
+  color: white;
+  font-weight: 700;
+}
+.mode-tab:not(.active):hover { color: var(--text); background: var(--border); }
+
+/* Stats bar */
+.stats {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+  margin-bottom: 20px;
+}
+.stat {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 10px 8px;
+  text-align: center;
+}
+.stat-val {
+  font-size: 1.4rem;
+  font-weight: 700;
+  font-family: var(--kanji-font);
+  line-height: 1;
+}
+.stat-val.green { color: var(--correct); }
+.stat-val.red { color: var(--wrong); }
+.stat-val.gold { color: var(--accent2); }
+.stat-label { font-size: 0.7rem; color: var(--muted); margin-top: 4px; letter-spacing: 0.06em; }
+
+/* Progress bar */
+.progress-wrap {
+  background: var(--surface);
+  border-radius: 99px;
+  height: 6px;
+  margin-bottom: 20px;
+  overflow: hidden;
+  border: 1px solid var(--border);
+}
+.progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--accent), var(--accent2));
+  border-radius: 99px;
+  transition: width 0.4s ease;
+  width: 0%;
+}
+
+/* Card */
+.card-wrap {
+  perspective: 1000px;
+  margin-bottom: 20px;
+  min-height: 220px;
+}
+.card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  padding: 36px 28px 28px;
+  text-align: center;
+  position: relative;
+  transition: transform 0.15s, box-shadow 0.15s;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+}
+.card.shake {
+  animation: shake 0.35s ease;
+}
+@keyframes shake {
+  0%,100%{transform:translateX(0)}
+  20%{transform:translateX(-8px)}
+  40%{transform:translateX(8px)}
+  60%{transform:translateX(-6px)}
+  80%{transform:translateX(6px)}
+}
+.card.pop {
+  animation: pop 0.3s ease;
+}
+@keyframes pop {
+  0%{transform:scale(1)}
+  50%{transform:scale(1.03)}
+  100%{transform:scale(1)}
+}
+
+.lesson-badge {
+  position: absolute;
+  top: 14px; right: 16px;
+  font-size: 0.72rem;
+  color: var(--muted);
+  background: var(--border);
+  padding: 3px 10px;
+  border-radius: 99px;
+  letter-spacing: 0.05em;
+}
+.q-type-badge {
+  position: absolute;
+  top: 14px; left: 16px;
+  font-size: 0.72rem;
+  padding: 3px 10px;
+  border-radius: 99px;
+  letter-spacing: 0.05em;
+  font-weight: 700;
+}
+.q-type-badge.pinyin { background: rgba(232,83,74,0.2); color: var(--accent); }
+.q-type-badge.kanji  { background: rgba(78,205,196,0.2); color: var(--teal); }
+
+.question-display {
+  margin: 8px 0 20px;
+}
+.question-main {
+  font-family: var(--kanji-font);
+  font-size: 2.8rem;
+  line-height: 1.2;
+  color: var(--text);
+  letter-spacing: 0.06em;
+}
+.question-main.is-pinyin {
+  font-family: var(--ui-font);
+  font-size: 2rem;
+  color: var(--accent2);
+  font-weight: 700;
+}
+.question-sub {
+  font-size: 0.85rem;
+  color: var(--muted);
+  margin-top: 8px;
+}
+
+/* Input */
+.input-row {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+.drill-input {
+  flex: 1;
+  background: var(--surface);
+  border: 2px solid var(--border);
+  border-radius: 10px;
+  color: var(--text);
+  font-family: var(--ui-font);
+  font-size: 1.1rem;
+  padding: 12px 16px;
+  outline: none;
+  transition: border-color 0.2s;
+}
+.drill-input:focus { border-color: var(--accent); }
+.drill-input.correct-input { border-color: var(--correct); background: rgba(78,205,196,0.08); }
+.drill-input.wrong-input  { border-color: var(--wrong);   background: rgba(232,83,74,0.08); }
+
+.submit-btn {
+  background: var(--accent);
+  color: white;
+  border: none;
+  border-radius: 10px;
+  padding: 12px 22px;
+  font-family: var(--ui-font);
+  font-size: 1rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.15s, transform 0.1s;
+  white-space: nowrap;
+}
+.submit-btn:hover { background: #d94840; }
+.submit-btn:active { transform: scale(0.97); }
+
+/* Feedback */
+.feedback-area {
+  min-height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  font-size: 0.95rem;
+  font-weight: 500;
+  border-radius: 10px;
+  padding: 10px;
+  transition: all 0.2s;
+}
+.feedback-area.ok  { background: rgba(78,205,196,0.12);  color: var(--correct); }
+.feedback-area.ng  { background: rgba(232,83,74,0.12);   color: var(--wrong); }
+.feedback-area.idle { color: var(--muted); font-size: 0.82rem; }
+
+/* Nav buttons */
+.nav-row {
+  display: flex;
+  gap: 10px;
+  margin-top: 16px;
+}
+.nav-btn {
+  flex: 1;
+  padding: 13px;
+  border-radius: 12px;
+  border: 2px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+  font-family: var(--ui-font);
+  font-size: 0.9rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.15s;
+  letter-spacing: 0.04em;
+}
+.nav-btn:hover { border-color: var(--accent); color: var(--accent); }
+.nav-btn.primary { background: var(--teal); color: var(--bg); border-color: var(--teal); }
+.nav-btn.primary:hover { background: #3db8b0; border-color: #3db8b0; color: var(--bg); }
+
+/* Results screen */
+.results-screen {
+  display: none;
+  text-align: center;
+  padding: 20px;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+}
+.results-screen.show { display: block; }
+.result-emoji { font-size: 3rem; margin-bottom: 12px; }
+.result-title { font-family: var(--kanji-font); font-size: 1.8rem; color: var(--accent); margin-bottom: 16px; }
+.result-score {
+  font-size: 3.5rem;
+  font-weight: 700;
+  font-family: var(--kanji-font);
+  color: var(--accent2);
+  line-height: 1;
+  margin-bottom: 6px;
+}
+.result-sub { color: var(--muted); font-size: 0.88rem; margin-bottom: 24px; }
+.result-breakdown {
+  display: flex;
+  justify-content: center;
+  gap: 24px;
+  margin-bottom: 24px;
+}
+.rb { text-align: center; }
+.rb-val { font-size: 1.5rem; font-weight: 700; }
+.rb-val.g { color: var(--correct); }
+.rb-val.r { color: var(--wrong); }
+.rb-label { font-size: 0.75rem; color: var(--muted); }
+
+/* Missed words list */
+.missed-list {
+  text-align: left;
+  background: var(--surface);
+  border-radius: 12px;
+  padding: 16px;
+  margin-bottom: 20px;
+  max-height: 220px;
+  overflow-y: auto;
+}
+.missed-list h3 { font-size: 0.85rem; color: var(--muted); margin-bottom: 10px; letter-spacing: 0.08em; }
+.missed-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 7px 0;
+  border-bottom: 1px solid var(--border);
+  font-size: 0.9rem;
+}
+.missed-item:last-child { border-bottom: none; }
+.missed-q { color: var(--accent2); font-weight: 700; }
+.missed-a { color: var(--teal); }
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 4px; }
+::-webkit-scrollbar-track { background: var(--surface); }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 99px; }
+
+@media(max-width:480px) {
+  .question-main { font-size: 2.2rem; }
+  .question-main.is-pinyin { font-size: 1.6rem; }
+  .stats { grid-template-columns: repeat(2,1fr); }
+}
+</style>
+</head>
+<body>
+<div class="app">
+  <header>
+    <div class="logo">中国語<span>単語</span>ドリル</div>
+    <p>第1課〜第4課 ｜ ピンイン↔漢字 集中練習</p>
+  </header>
+
+  <!-- Mode tabs -->
+  <div class="mode-tabs">
+    <button class="mode-tab active" onclick="setMode('both')">ランダム混合</button>
+    <button class="mode-tab" onclick="setMode('p2k')">ピンイン→漢字</button>
+    <button class="mode-tab" onclick="setMode('k2p')">漢字→ピンイン</button>
+  </div>
+
+  <!-- Stats -->
+  <div class="stats">
+    <div class="stat">
+      <div class="stat-val gold" id="s-total">0</div>
+      <div class="stat-label">問目</div>
+    </div>
+    <div class="stat">
+      <div class="stat-val green" id="s-correct">0</div>
+      <div class="stat-label">正解</div>
+    </div>
+    <div class="stat">
+      <div class="stat-val red" id="s-wrong">0</div>
+      <div class="stat-label">不正解</div>
+    </div>
+    <div class="stat">
+      <div class="stat-val" id="s-pct" style="color:var(--accent2)">—</div>
+      <div class="stat-label">正答率</div>
+    </div>
+  </div>
+
+  <!-- Progress -->
+  <div class="progress-wrap">
+    <div class="progress-fill" id="progress-fill"></div>
+  </div>
+
+  <!-- Drill card -->
+  <div id="drill-view">
+    <div class="card-wrap">
+      <div class="card" id="main-card">
+        <span class="lesson-badge" id="lesson-badge">第1課</span>
+        <span class="q-type-badge pinyin" id="type-badge">ピンイン→漢字</span>
+        <div class="question-display">
+          <div class="question-main" id="q-main">kāfēi</div>
+          <div class="question-sub" id="q-sub">→ 漢字で書いてください</div>
+        </div>
+        <div class="input-row">
+          <input class="drill-input" id="drill-input" type="text" placeholder="ここに入力…" autocomplete="off" autocorrect="off" spellcheck="false">
+          <button class="submit-btn" onclick="checkAnswer()">確認</button>
+        </div>
+        <div class="feedback-area idle" id="feedback">Enterキーまたは「確認」ボタンで回答</div>
+      </div>
+    </div>
+
+    <div class="nav-row">
+      <button class="nav-btn" onclick="skipQuestion()">スキップ →</button>
+      <button class="nav-btn primary" onclick="nextQuestion()">次の問題 →</button>
+      <button class="nav-btn" onclick="showResults()">結果を見る</button>
+    </div>
+  </div>
+
+  <!-- Results -->
+  <div class="results-screen" id="results-screen">
+    <div class="result-emoji" id="r-emoji">🎉</div>
+    <div class="result-title">お疲れ様でした！</div>
+    <div class="result-score" id="r-score">0%</div>
+    <div class="result-sub" id="r-sub"></div>
+    <div class="result-breakdown">
+      <div class="rb"><div class="rb-val g" id="r-correct">0</div><div class="rb-label">正解</div></div>
+      <div class="rb"><div class="rb-val r" id="r-wrong">0</div><div class="rb-label">不正解</div></div>
+      <div class="rb"><div class="rb-val" style="color:var(--muted)" id="r-skip">0</div><div class="rb-label">スキップ</div></div>
+    </div>
+    <div class="missed-list" id="missed-list"></div>
+    <div class="nav-row">
+      <button class="nav-btn primary" onclick="restartDrill()">もう一度！</button>
+      <button class="nav-btn" onclick="restartDrill('missed')">間違いだけ</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ===================== WORD DATABASE =====================
+const allWords = [
+  // 第1課 - 動詞文、食べ物・飲み物
+  {lesson:1, kanji:"咖啡",   pinyin:"kāfēi",    meaning:"コーヒー"},
+  {lesson:1, kanji:"饺子",   pinyin:"jiǎozi",   meaning:"餃子"},
+  {lesson:1, kanji:"炒饭",   pinyin:"chǎofàn",  meaning:"チャーハン"},
+  {lesson:1, kanji:"拉面",   pinyin:"lāmiàn",   meaning:"ラーメン"},
+  {lesson:1, kanji:"红茶",   pinyin:"hóngchá",  meaning:"紅茶"},
+  {lesson:1, kanji:"牛奶",   pinyin:"niúnǎi",   meaning:"牛乳"},
+  {lesson:1, kanji:"图书馆", pinyin:"túshūguǎn",meaning:"図書館"},
+  {lesson:1, kanji:"笔记本", pinyin:"bǐjìběn",  meaning:"ノート"},
+  {lesson:1, kanji:"英语",   pinyin:"Yīngyǔ",   meaning:"英語"},
+  {lesson:1, kanji:"汉语",   pinyin:"Hànyǔ",    meaning:"中国語"},
+  {lesson:1, kanji:"老师",   pinyin:"lǎoshī",   meaning:"先生"},
+  {lesson:1, kanji:"学生",   pinyin:"xuésheng", meaning:"学生"},
+  {lesson:1, kanji:"吃",     pinyin:"chī",      meaning:"食べる"},
+  {lesson:1, kanji:"喝",     pinyin:"hē",       meaning:"飲む"},
+  {lesson:1, kanji:"说",     pinyin:"shuō",     meaning:"話す"},
+  {lesson:1, kanji:"去",     pinyin:"qù",       meaning:"行く"},
+  {lesson:1, kanji:"要",     pinyin:"yào",      meaning:"ほしい・したい"},
+  {lesson:1, kanji:"东京",   pinyin:"Dōngjīng", meaning:"東京"},
+  {lesson:1, kanji:"上海",   pinyin:"Shànghǎi", meaning:"上海"},
+  {lesson:1, kanji:"北京",   pinyin:"Běijīng",  meaning:"北京"},
+  // 第2課 - 是構文、名前
+  {lesson:2, kanji:"名字",   pinyin:"míngzi",   meaning:"名前"},
+  {lesson:2, kanji:"中国人", pinyin:"Zhōngguórén",meaning:"中国人"},
+  {lesson:2, kanji:"日本人", pinyin:"Rìběnrén", meaning:"日本人"},
+  {lesson:2, kanji:"留学生", pinyin:"liúxuéshēng",meaning:"留学生"},
+  {lesson:2, kanji:"学校",   pinyin:"xuéxiào",  meaning:"学校"},
+  {lesson:2, kanji:"大学",   pinyin:"dàxué",    meaning:"大学"},
+  {lesson:2, kanji:"朋友",   pinyin:"péngyou",  meaning:"友達"},
+  {lesson:2, kanji:"爸爸",   pinyin:"bàba",     meaning:"お父さん"},
+  {lesson:2, kanji:"妈妈",   pinyin:"māma",     meaning:"お母さん"},
+  {lesson:2, kanji:"姐姐",   pinyin:"jiějie",   meaning:"お姉さん"},
+  {lesson:2, kanji:"爷爷",   pinyin:"yéye",     meaning:"おじいさん"},
+  {lesson:2, kanji:"什么",   pinyin:"shénme",   meaning:"何"},
+  {lesson:2, kanji:"好",     pinyin:"hǎo",      meaning:"よい"},
+  {lesson:2, kanji:"是",     pinyin:"shì",      meaning:"〜です（是）"},
+  {lesson:2, kanji:"不是",   pinyin:"bú shì",   meaning:"〜ではない"},
+  {lesson:2, kanji:"日本",   pinyin:"Rìběn",    meaning:"日本"},
+  {lesson:2, kanji:"中国",   pinyin:"Zhōngguó", meaning:"中国"},
+  {lesson:2, kanji:"美国",   pinyin:"Měiguó",   meaning:"アメリカ"},
+  // 第3課 - 所有、これ・あれ
+  {lesson:3, kanji:"词典",   pinyin:"cídiǎn",   meaning:"辞書"},
+  {lesson:3, kanji:"电子词典",pinyin:"diànzǐ cídiǎn",meaning:"電子辞書"},
+  {lesson:3, kanji:"手机",   pinyin:"shǒujī",   meaning:"携帯電話"},
+  {lesson:3, kanji:"眼镜",   pinyin:"yǎnjìng",  meaning:"眼鏡"},
+  {lesson:3, kanji:"钥匙",   pinyin:"yàoshi",   meaning:"鍵"},
+  {lesson:3, kanji:"豆浆",   pinyin:"dòujiāng", meaning:"豆乳"},
+  {lesson:3, kanji:"报告",   pinyin:"bàogào",   meaning:"レポート"},
+  {lesson:3, kanji:"书包",   pinyin:"shūbāo",   meaning:"カバン"},
+  {lesson:3, kanji:"这",     pinyin:"zhè",      meaning:"これ・この"},
+  {lesson:3, kanji:"那",     pinyin:"nà",       meaning:"あれ・あの"},
+  {lesson:3, kanji:"谁",     pinyin:"shéi",     meaning:"誰"},
+  {lesson:3, kanji:"的",     pinyin:"de",       meaning:"〜の（的）"},
+  {lesson:3, kanji:"小林",   pinyin:"Xiǎolín",  meaning:"小林（名前）"},
+  {lesson:3, kanji:"李英",   pinyin:"Lǐ Yīng",  meaning:"李英（名前）"},
+  {lesson:3, kanji:"汉英词典",pinyin:"Hàn-Yīng cídiǎn",meaning:"中英辞典"},
+  // 第4課 - 形容詞、どうですか
+  {lesson:4, kanji:"发音",   pinyin:"fāyīn",    meaning:"発音"},
+  {lesson:4, kanji:"语法",   pinyin:"yǔfǎ",     meaning:"文法"},
+  {lesson:4, kanji:"忙",     pinyin:"máng",     meaning:"忙しい"},
+  {lesson:4, kanji:"难",     pinyin:"nán",      meaning:"難しい"},
+  {lesson:4, kanji:"好吃",   pinyin:"hǎochī",   meaning:"おいしい"},
+  {lesson:4, kanji:"有意思",  pinyin:"yǒu yìsi", meaning:"面白い"},
+  {lesson:4, kanji:"好看",   pinyin:"hǎokàn",   meaning:"きれい・かっこいい"},
+  {lesson:4, kanji:"怎么样",  pinyin:"zěnmeyàng",meaning:"どうですか"},
+  {lesson:4, kanji:"最近",   pinyin:"zuìjìn",   meaning:"最近"},
+  {lesson:4, kanji:"非常",   pinyin:"fēicháng",  meaning:"とても"},
+  {lesson:4, kanji:"很",     pinyin:"hěn",      meaning:"とても"},
+  {lesson:4, kanji:"不太",   pinyin:"bú tài",   meaning:"あまり〜ない"},
+  {lesson:4, kanji:"耳朵",   pinyin:"ěrduo",    meaning:"耳"},
+  {lesson:4, kanji:"尾巴",   pinyin:"wěiba",    meaning:"しっぽ"},
+  {lesson:4, kanji:"胆子",   pinyin:"dǎnzi",    meaning:"肝っ玉"},
+];
+
+// ===================== STATE =====================
+let mode = 'both';         // 'both' | 'p2k' | 'k2p'
+let queue = [];            // shuffled question objects
+let qIdx = 0;
+let correct = 0;
+let wrong = 0;
+let skipped = 0;
+let answered = false;
+let missedWords = [];      // {q, a, type}
+let restartMissed = false;
+
+// ===================== INIT =====================
+function buildQueue(wordsToUse) {
+  const qs = [];
+  wordsToUse.forEach(w => {
+    if (mode === 'both' || mode === 'p2k') qs.push({...w, type:'p2k'});
+    if (mode === 'both' || mode === 'k2p') qs.push({...w, type:'k2p'});
+  });
+  return shuffle(qs);
+}
+
+function shuffle(arr) {
+  const a = [...arr];
+  for (let i = a.length-1; i > 0; i--) {
+    const j = Math.floor(Math.random()*(i+1));
+    [a[i],a[j]] = [a[j],a[i]];
+  }
+  return a;
+}
+
+function startDrill(words) {
+  queue = buildQueue(words);
+  qIdx = 0; correct = 0; wrong = 0; skipped = 0;
+  missedWords = []; answered = false;
+  document.getElementById('results-screen').classList.remove('show');
+  document.getElementById('drill-view').style.display = 'block';
+  renderQuestion();
+  updateStats();
+}
+
+function setMode(m) {
+  mode = m;
+  document.querySelectorAll('.mode-tab').forEach((t,i)=>{
+    t.classList.toggle('active', ['both','p2k','k2p'][i] === m);
+  });
+  startDrill(allWords);
+}
+
+// ===================== RENDER =====================
+function renderQuestion() {
+  if (qIdx >= queue.length) { showResults(); return; }
+  const q = queue[qIdx];
+  answered = false;
+
+  const inp = document.getElementById('drill-input');
+  inp.value = '';
+  inp.classList.remove('correct-input','wrong-input');
+  inp.disabled = false;
+
+  const fb = document.getElementById('feedback');
+  fb.textContent = 'Enterキーまたは「確認」ボタンで回答';
+  fb.className = 'feedback-area idle';
+
+  document.getElementById('lesson-badge').textContent = `第${q.lesson}課`;
+
+  const typeBadge = document.getElementById('type-badge');
+  const qMain    = document.getElementById('q-main');
+  const qSub     = document.getElementById('q-sub');
+
+  if (q.type === 'p2k') {
+    typeBadge.textContent = 'ピンイン → 漢字';
+    typeBadge.className = 'q-type-badge pinyin';
+    qMain.textContent = q.pinyin;
+    qMain.className = 'question-main is-pinyin';
+    qSub.textContent = `（意味: ${q.meaning}）　→ 漢字で書いてください`;
+    inp.placeholder = '漢字を入力…';
+  } else {
+    typeBadge.textContent = '漢字 → ピンイン';
+    typeBadge.className = 'q-type-badge kanji';
+    qMain.textContent = q.kanji;
+    qMain.className = 'question-main';
+    qSub.textContent = `（意味: ${q.meaning}）　→ ピンインを入力してください`;
+    inp.placeholder = 'pīnyīn を入力…';
+  }
+
+  updateProgress();
+  setTimeout(() => inp.focus(), 50);
+}
+
+// ===================== CHECK =====================
+function normalize(s) {
+  return s.trim()
+    .toLowerCase()
+    .replace(/[āáǎà]/g,'a')
+    .replace(/[ēéěè]/g,'e')
+    .replace(/[īíǐì]/g,'i')
+    .replace(/[ōóǒò]/g,'o')
+    .replace(/[ūúǔù]/g,'u')
+    .replace(/[ǖǘǚǜ]/g,'v')
+    .replace(/\s+/g,'');
+}
+
+function checkAnswer() {
+  if (answered) { nextQuestion(); return; }
+  const q = queue[qIdx];
+  const inp = document.getElementById('drill-input');
+  const userRaw = inp.value.trim();
+  if (!userRaw) return;
+
+  answered = true;
+  const fb = document.getElementById('feedback');
+  const card = document.getElementById('main-card');
+
+  let isCorrect = false;
+  let correctAns = '';
+
+  if (q.type === 'p2k') {
+    correctAns = q.kanji;
+    isCorrect = userRaw === q.kanji;
+  } else {
+    correctAns = q.pinyin;
+    isCorrect = normalize(userRaw) === normalize(q.pinyin);
+  }
+
+  if (isCorrect) {
+    correct++;
+    inp.classList.add('correct-input');
+    fb.textContent = `✓ 正解！　${q.kanji}（${q.pinyin}）= ${q.meaning}`;
+    fb.className = 'feedback-area ok';
+    card.classList.add('pop');
+    setTimeout(()=>card.classList.remove('pop'),300);
+  } else {
+    wrong++;
+    inp.classList.add('wrong-input');
+    fb.textContent = `✗ 正解は：${correctAns}　（${q.meaning}）`;
+    fb.className = 'feedback-area ng';
+    card.classList.add('shake');
+    setTimeout(()=>card.classList.remove('shake'),400);
+    missedWords.push({
+      q: q.type==='p2k' ? q.pinyin : q.kanji,
+      a: correctAns,
+      meaning: q.meaning,
+      type: q.type,
+      word: q
+    });
+  }
+  inp.disabled = true;
+  updateStats();
+}
+
+function nextQuestion() {
+  qIdx++;
+  renderQuestion();
+}
+
+function skipQuestion() {
+  if (!answered) {
+    skipped++;
+    const q = queue[qIdx];
+    missedWords.push({
+      q: q.type==='p2k' ? q.pinyin : q.kanji,
+      a: q.type==='p2k' ? q.kanji : q.pinyin,
+      meaning: q.meaning,
+      type: q.type,
+      word: q
+    });
+  }
+  qIdx++;
+  renderQuestion();
+  updateStats();
+}
+
+// ===================== STATS =====================
+function updateStats() {
+  const total = qIdx + (answered ? 0 : 0);
+  document.getElementById('s-total').textContent = qIdx + 1 > queue.length ? queue.length : qIdx + 1;
+  document.getElementById('s-correct').textContent = correct;
+  document.getElementById('s-wrong').textContent = wrong;
+  const done = correct + wrong;
+  document.getElementById('s-pct').textContent = done > 0 ? Math.round(correct/done*100)+'%' : '—';
+}
+
+function updateProgress() {
+  const pct = queue.length > 0 ? (qIdx / queue.length * 100) : 0;
+  document.getElementById('progress-fill').style.width = pct + '%';
+}
+
+// ===================== RESULTS =====================
+function showResults() {
+  document.getElementById('drill-view').style.display = 'none';
+  const screen = document.getElementById('results-screen');
+  screen.classList.add('show');
+
+  const total = correct + wrong + skipped;
+  const pct = total > 0 ? Math.round(correct/total*100) : 0;
+
+  document.getElementById('r-score').textContent = pct + '%';
+  document.getElementById('r-correct').textContent = correct;
+  document.getElementById('r-wrong').textContent = wrong;
+  document.getElementById('r-skip').textContent = skipped;
+  document.getElementById('r-sub').textContent = `${total}問中 ${correct}問正解`;
+
+  let emoji = '😅', comment = 'もう少し！基礎を固めよう。';
+  if (pct >= 90) { emoji = '🎉'; comment = '完璧！テスト本番も大丈夫！'; }
+  else if (pct >= 75) { emoji = '😊'; comment = 'よくできました！間違えた単語を復習しよう。'; }
+  else if (pct >= 60) { emoji = '🙂'; comment = 'まあまあ！もう一周してみよう。'; }
+  document.getElementById('r-emoji').textContent = emoji;
+
+  // Missed words list
+  const ml = document.getElementById('missed-list');
+  if (missedWords.length === 0) {
+    ml.innerHTML = '<h3>間違いなし！完璧です！</h3>';
+  } else {
+    const uniqueMissed = missedWords.filter((v,i,a)=>a.findIndex(t=>t.q===v.q&&t.type===v.type)===i);
+    ml.innerHTML = `<h3>要復習 (${uniqueMissed.length}語)</h3>` +
+      uniqueMissed.map(m =>
+        `<div class="missed-item">
+          <span class="missed-q">${m.q}</span>
+          <span>→</span>
+          <span class="missed-a">${m.a}</span>
+          <span style="color:var(--muted);font-size:0.8rem">${m.meaning}</span>
+        </div>`
+      ).join('');
+  }
+
+  document.getElementById('progress-fill').style.width = '100%';
+}
+
+function restartDrill(type) {
+  if (type === 'missed' && missedWords.length > 0) {
+    const uniqueWords = missedWords
+      .filter((v,i,a)=>a.findIndex(t=>t.word.kanji===v.word.kanji)===i)
+      .map(m=>m.word);
+    startDrill(uniqueWords);
+  } else {
+    startDrill(allWords);
+  }
+}
+
+// ===================== KEYBOARD =====================
+document.getElementById('drill-input').addEventListener('keydown', function(e) {
+  if (e.key === 'Enter') {
+    if (answered) nextQuestion();
+    else checkAnswer();
+  }
+});
+
+// ===================== START =====================
+startDrill(allWords);
+</script>
+</body>
+</html>
